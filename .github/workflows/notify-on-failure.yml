@@ -1,0 +1,38 @@
+name: 运行失败邮件通知
+on:
+  # 触发时机：监听所有 workflow 运行结束（也可指定具体 job，如 push/pull_request）
+  workflow_run:
+    workflows: ["*"]  # 监听所有 workflow，也可指定名称如 ["构建部署"]
+    types: [completed]
+
+jobs:
+  send-failure-email:
+    runs-on: ubuntu-latest
+    # 仅当 workflow 运行失败时执行此 job
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    steps:
+      - name: 发送失败通知邮件
+        uses: dawidd6/action-send-mail@v7
+        with:
+          # SMTP 服务器配置（不同邮箱地址不同，见下方备注）
+          server_address: smtp.qq.com
+          server_port: 465  # SSL 端口，一般是 465 或 587
+          # 发件人信息
+          username: ${{ secrets.EMAIL_USER }}  # 替换为你的发件邮箱
+          password: ${{ secrets.EMAIL_PASS }}  # 对应步骤1的密钥
+          subject: "GitHub Actions 运行失败 | ${{ github.repository }} | ${{ github.event.workflow_run.name }}"
+          # 收件人（可多个，用逗号分隔）
+          to: ${{ secrets.EMAIL_TO }}
+          # 发件人显示名称
+          from: "GitHub Actions 通知"
+          # 邮件正文（支持 HTML，可自定义内容）
+          html_body: |
+            <h3>⚠️ GitHub Actions 工作流运行失败</h3>
+            <p>仓库：${{ github.repository }}</p>
+            <p>工作流名称：${{ github.event.workflow_run.name }}</p>
+            <p>运行 ID：${{ github.event.workflow_run.id }}</p>
+            <p>失败分支：${{ github.event.workflow_run.head_branch }}</p>
+            <p>查看详情：<a href="${{ github.event.workflow_run.html_url }}">点击跳转</a></p>
+            <p>触发事件：${{ github.event.workflow_run.event }}</p>
+          # 启用 SSL 加密（必填）
+          secure: true
